@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #2e6db4;
+  --secondary: #f5a623;
+  --success: #27ae60;
+  --background: #f0f4ff;
+  --card: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: #10223a;
+  --font-sans: var(--font-body);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(46, 109, 180, 0.15), transparent 28%),
+    radial-gradient(circle at 88% 82%, rgba(245, 166, 35, 0.15), transparent 24%),
+    var(--background);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), cursive;
+}
+
+@keyframes pulse-once {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.07);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-pulse-once {
+  animation: pulse-once 0.7s ease-out;
+}
