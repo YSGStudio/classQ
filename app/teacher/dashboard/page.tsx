@@ -2,7 +2,6 @@ import ClearStudentSessionOnTeacherDashboard from "@/components/ClearStudentSess
 import LogoutButton from "@/components/LogoutButton";
 import TeacherRoomsPanel from "@/components/TeacherRoomsPanel";
 import TeacherStudentsPanel from "@/components/TeacherStudentsPanel";
-import Top3Section from "@/components/Top3Section";
 import { requireTeacher } from "@/lib/auth";
 import { getTeacherDashboardData } from "@/lib/teacher-dashboard-data";
 
@@ -23,14 +22,6 @@ export default async function TeacherDashboardPage() {
           <LogoutButton />
         </div>
       </header>
-
-      <section className="mt-5">
-        <Top3Section
-          scoreTop3={data.topScoreStudents}
-          ratedTop3={data.topRatedQuestions}
-          answeredTop3={data.topAnsweredQuestions}
-        />
-      </section>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-2">
         <TeacherRoomsPanel initialRooms={data.rooms} />
