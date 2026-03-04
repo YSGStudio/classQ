@@ -21,19 +21,32 @@ export default function QuestionCard({
   onDelete,
 }: QuestionCardProps) {
   const ratingTotal = question.ratingTotal ?? 0;
+  const isOwnQuestion = !canRate;
+  const articleClassName = isOwnQuestion
+    ? "rounded-2xl border border-[#2E6DB4]/35 bg-[#EAF2FF] p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+    : "rounded-2xl border border-[#2E6DB4]/15 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md";
+  const badgeClassName = isOwnQuestion
+    ? "inline-flex items-center rounded-full bg-[#DDEAFF] px-2 py-1 text-xs font-bold text-[#1D4F91]"
+    : "inline-flex items-center rounded-full bg-[#F0F4FF] px-2 py-1 text-xs font-bold text-[#2E6DB4]";
+  const idBadgeClassName = isOwnQuestion
+    ? "rounded-full bg-[#DDEAFF] px-2 py-1 text-xs font-medium text-[#1D4F91]"
+    : "rounded-full bg-[#F0F4FF] px-2 py-1 text-xs font-medium text-[#2E6DB4]";
+  const authorClassName = isOwnQuestion
+    ? "mt-2 text-sm font-semibold text-[#1D4F91]"
+    : "mt-2 text-sm font-semibold text-[#2E6DB4]";
 
   return (
-    <article className="rounded-2xl border border-[#2E6DB4]/15 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <article className={articleClassName}>
       <header className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <p className="inline-flex items-center rounded-full bg-[#F0F4FF] px-2 py-1 text-xs font-bold text-[#2E6DB4]">
+          <p className={badgeClassName}>
             완성도 총점 {ratingTotal}점
           </p>
-          <p className="mt-2 text-sm font-semibold text-[#2E6DB4]">🙋 {question.author}</p>
+          <p className={authorClassName}>🙋 {question.author}</p>
           <p className="text-xs text-slate-500">{question.createdAt}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#F0F4FF] px-2 py-1 text-xs font-medium text-[#2E6DB4]">
+          <span className={idBadgeClassName}>
             #{question.id.slice(0, 6)}
           </span>
           {canDelete ? (
