@@ -1,5 +1,6 @@
 import ClearStudentSessionOnTeacherDashboard from "@/components/ClearStudentSessionOnTeacherDashboard";
 import LogoutButton from "@/components/LogoutButton";
+import RefreshButton from "@/components/RefreshButton";
 import TeacherRoomsPanel from "@/components/TeacherRoomsPanel";
 import TeacherStudentsPanel from "@/components/TeacherStudentsPanel";
 import { requireTeacher } from "@/lib/auth";
@@ -19,7 +20,10 @@ export default async function TeacherDashboardPage() {
             <h1 className="text-3xl font-black text-[#113459]">학급 운영 현황</h1>
             <p className="mt-1 text-sm font-semibold text-slate-600">교사 계정</p>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <RefreshButton />
+            <LogoutButton />
+          </div>
         </div>
       </header>
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import QuestionCard from "@/components/QuestionCard";
+import RefreshButton from "@/components/RefreshButton";
 import ScoreBadge from "@/components/ScoreBadge";
 import Top3Section from "@/components/Top3Section";
 import UnansweredBanner from "@/components/UnansweredBanner";
@@ -305,6 +306,7 @@ export default function RoomFeedClient({
             <p className="mt-1 text-sm font-semibold text-slate-600">방 코드: {code}</p>
           </div>
           <div className="flex items-center gap-2">
+            <RefreshButton />
             {current.role === "teacher" ? (
               <div className="rounded-full border border-[#2E6DB4]/30 bg-white px-4 py-2 text-sm font-bold text-[#2E6DB4] shadow-sm">
                 교사

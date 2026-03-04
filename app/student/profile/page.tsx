@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RefreshButton from "@/components/RefreshButton";
 import ScoreBadge from "@/components/ScoreBadge";
 import { requireStudent } from "@/lib/auth";
 import { getStudentProfileData } from "@/lib/student-profile-data";
@@ -14,7 +15,10 @@ export default async function StudentProfilePage() {
       <section className="rounded-2xl bg-white p-6 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-black text-[#113459]">내 프로필</h1>
-          <ScoreBadge name={data.name} score={data.score} />
+          <div className="flex items-center gap-2">
+            <RefreshButton />
+            <ScoreBadge name={data.name} score={data.score} />
+          </div>
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
