@@ -10,12 +10,14 @@ type QuestionDetailClientProps = {
   code: string;
   question: Question;
   initialAnswers: Answer[];
+  canWriteAnswer: boolean;
 };
 
 export default function QuestionDetailClient({
   code,
   question,
   initialAnswers,
+  canWriteAnswer,
 }: QuestionDetailClientProps) {
   const [answers, setAnswers] = useState<Answer[]>(initialAnswers);
   const [draft, setDraft] = useState("");
@@ -109,6 +111,11 @@ export default function QuestionDetailClient({
   }, [hasSupabase, question.id]);
 
   async function handleSubmitAnswer() {
+    if (!canWriteAnswer) {
+      setStatus("내가 출제한 질문에는 답변을 작성할 수 없습니다.");
+      return;
+    }
+
     const content = draft.trim();
     if (!content || isSubmitting) return;
 
@@ -197,15 +204,24 @@ export default function QuestionDetailClient({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             rows={4}
-            placeholder="친구의 질문에 답변을 작성해보세요."
-            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#2E6DB4]"
+            placeholder={
+              canWriteAnswer
+                ? "친구의 질문에 답변을 작성해보세요."
+                : "내가 출제한 질문에는 답변을 작성할 수 없습니다."
+            }
+            disabled={!canWriteAnswer}
+            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#2E6DB4] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
           />
           <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">질문 작성자와 교사가 답변을 확인할 수 있습니다.</p>
+            <p className="text-xs text-slate-500">
+              {canWriteAnswer
+                ? "질문 작성자와 교사가 답변을 확인할 수 있습니다."
+                : "출제자 본인은 답변 작성이 비활성화됩니다."}
+            </p>
             <button
               type="button"
               onClick={handleSubmitAnswer}
-              disabled={isSubmitting || draft.trim().length === 0}
+              disabled={!canWriteAnswer || isSubmitting || draft.trim().length === 0}
               className="rounded-lg bg-[#2E6DB4] px-4 py-2 text-sm font-bold text-white hover:bg-[#245990] disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               {isSubmitting ? "등록 중..." : "답변 등록"}

@@ -34,5 +34,12 @@ export default async function QuestionDetailPage({
     );
   }
 
-  return <QuestionDetailClient code={code} question={question} initialAnswers={answers} />;
+  return (
+    <QuestionDetailClient
+      code={code}
+      question={question}
+      initialAnswers={answers}
+      canWriteAnswer={question.authorId !== current.id}
+    />
+  );
 }
