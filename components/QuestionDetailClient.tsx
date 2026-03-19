@@ -11,6 +11,7 @@ type QuestionDetailClientProps = {
   question: Question;
   initialAnswers: Answer[];
   canWriteAnswer: boolean;
+  canScoreAnswers: boolean;
 };
 
 export default function QuestionDetailClient({
@@ -18,11 +19,13 @@ export default function QuestionDetailClient({
   question,
   initialAnswers,
   canWriteAnswer,
+  canScoreAnswers,
 }: QuestionDetailClientProps) {
   const [answers, setAnswers] = useState<Answer[]>(initialAnswers);
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scoringAnswerId, setScoringAnswerId] = useState<string | null>(null);
 
   const hasSupabase = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -148,6 +151,8 @@ export default function QuestionDetailClient({
   async function handleScore(answerId: string, score: number) {
     setStatus(null);
 
+    if (!canScoreAnswers || scoringAnswerId) return;
+
     if (!hasSupabase) {
       setStatus("Supabase 연결이 없어 채점을 저장할 수 없습니다.");
       return;
@@ -156,6 +161,7 @@ export default function QuestionDetailClient({
     if (!answerIdSet.has(answerId)) return;
 
     try {
+      setScoringAnswerId(answerId);
       const res = await fetch(`/api/answers/${answerId}/score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,6 +181,8 @@ export default function QuestionDetailClient({
       setStatus(`채점 ${score}점을 저장했습니다.`);
     } catch {
       setStatus("채점 저장에 실패했습니다.");
+    } finally {
+      setScoringAnswerId(null);
     }
   }
 
@@ -204,7 +212,7 @@ export default function QuestionDetailClient({
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#2E6DB4]"
             />
             <div className="mt-3 flex items-center justify-between gap-2">
-              <p className="text-xs text-slate-500">질문 작성자와 교사가 답변을 확인할 수 있습니다.</p>
+              <p className="text-xs text-slate-500">참여 학생 모두 질문과 답변을 확인할 수 있습니다.</p>
               <button
                 type="button"
                 onClick={handleSubmitAnswer}
@@ -224,7 +232,12 @@ export default function QuestionDetailClient({
 
         <section className="mt-6">
           <h2 className="mb-3 text-lg font-black text-[#113459]">답변 목록 ({answers.length})</h2>
-          <AnswerList answers={answers} onScore={handleScore} />
+          <AnswerList
+            answers={answers}
+            canScore={canScoreAnswers}
+            scoringAnswerId={scoringAnswerId}
+            onScore={handleScore}
+          />
         </section>
       </section>
     </main>

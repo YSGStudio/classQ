@@ -7,6 +7,7 @@ type QuestionCardProps = {
   canRate?: boolean;
   canDelete?: boolean;
   canOpenDetail?: boolean;
+  isRating?: boolean;
   onRate?: (questionId: string, rating: number) => void;
   onDelete?: (questionId: string) => void;
 };
@@ -17,6 +18,7 @@ export default function QuestionCard({
   canRate = true,
   canDelete = false,
   canOpenDetail = false,
+  isRating = false,
   onRate,
   onDelete,
 }: QuestionCardProps) {
@@ -90,7 +92,7 @@ export default function QuestionCard({
             <button
               key={value}
               type="button"
-              disabled={!canRate}
+              disabled={!canRate || isRating}
               onClick={() => onRate?.(question.id, value)}
               className="rounded-md border border-[#F5A623]/30 bg-[#FFF8E8] px-2 py-1 text-xs font-bold text-[#9b6a10] hover:bg-[#F5A623] hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
               aria-label={`${value}점 부여`}
@@ -113,7 +115,7 @@ export default function QuestionCard({
             </Link>
           ) : (
             <span className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
-              출제자/교사만 상세보기 가능
+              상세보기 제한
             </span>
           )}
         </div>

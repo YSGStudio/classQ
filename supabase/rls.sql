@@ -103,16 +103,13 @@ for insert with check (
   and public.is_room_member(auth.uid(), room_id)
 );
 
--- answers (질문 작성자/교사만 읽기)
-create policy "limited read answers" on public.answers
+-- answers (같은 방 참여자는 모두 읽기)
+create policy "room members read answers" on public.answers
 for select using (
   exists (
     select 1 from public.questions q
     where q.id = question_id
-      and (
-        q.author_id = auth.uid()
-        or public.is_teacher(auth.uid())
-      )
+      and public.is_room_member(auth.uid(), q.room_id)
   )
 );
 
@@ -142,17 +139,14 @@ for insert with check (
   )
 );
 
-create policy "read answer scores if can read answers" on public.answer_scores
+create policy "read answer scores if room member" on public.answer_scores
 for select using (
   exists (
     select 1
     from public.answers a
     join public.questions q on q.id = a.question_id
     where a.id = answer_id
-      and (
-        public.is_teacher(auth.uid())
-        or q.author_id = auth.uid()
-      )
+      and public.is_room_member(auth.uid(), q.room_id)
   )
 );
 

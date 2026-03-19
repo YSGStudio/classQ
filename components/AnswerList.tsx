@@ -2,10 +2,17 @@ import type { Answer } from "@/types";
 
 type AnswerListProps = {
   answers: Answer[];
+  canScore?: boolean;
+  scoringAnswerId?: string | null;
   onScore?: (answerId: string, score: number) => void;
 };
 
-export default function AnswerList({ answers, onScore }: AnswerListProps) {
+export default function AnswerList({
+  answers,
+  canScore = false,
+  scoringAnswerId = null,
+  onScore,
+}: AnswerListProps) {
   if (answers.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
@@ -35,8 +42,9 @@ export default function AnswerList({ answers, onScore }: AnswerListProps) {
                 <button
                   key={value}
                   type="button"
+                  disabled={!canScore || scoringAnswerId === answer.id}
                   onClick={() => onScore?.(answer.id, value)}
-                  className="rounded-md border border-[#2E6DB4]/30 px-2 py-1 text-xs font-semibold text-[#2E6DB4] hover:bg-[#F0F4FF]"
+                  className="rounded-md border border-[#2E6DB4]/30 px-2 py-1 text-xs font-semibold text-[#2E6DB4] hover:bg-[#F0F4FF] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                 >
                   {value}
                 </button>

@@ -65,6 +65,13 @@ export async function POST(
     return NextResponse.json({ error: "별점 권한이 없습니다." }, { status: 403 });
   }
 
+  const { data: existingRating } = await admin
+    .from("question_ratings")
+    .select("rating")
+    .eq("question_id", id)
+    .eq("rater_id", actor.id)
+    .maybeSingle();
+
   const { error } = await admin.from("question_ratings").upsert(
     {
       question_id: id,
@@ -84,17 +91,9 @@ export async function POST(
     .eq("id", id)
     .single();
 
-  const { data: ratingRows } = await admin
-    .from("question_ratings")
-    .select("rating")
-    .eq("question_id", id);
-
-  const ratingTotal = (ratingRows ?? []).reduce((sum, row) => sum + (row.rating ?? 0), 0);
-  const ratingCount = (ratingRows ?? []).length;
-
   return NextResponse.json({
     avgRating: refreshed?.avg_rating ?? rating,
-    ratingTotal,
-    ratingCount,
+    previousRating: existingRating?.rating ?? null,
+    appliedRating: rating,
   });
 }

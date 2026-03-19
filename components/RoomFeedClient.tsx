@@ -38,6 +38,7 @@ export default function RoomFeedClient({
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ratingQuestionId, setRatingQuestionId] = useState<string | null>(null);
   const [currentScore, setCurrentScore] = useState(current.score);
 
   const hasSupabase = Boolean(
@@ -47,27 +48,6 @@ export default function RoomFeedClient({
   useEffect(() => {
     setQuestions(initialQuestions);
   }, [initialQuestions]);
-
-  useEffect(() => {
-    if (!hasSupabase) return;
-
-    let active = true;
-    async function syncQuestions() {
-      try {
-        const res = await fetch(`/api/rooms/by-code/${code}/questions`, { cache: "no-store" });
-        const payload = (await res.json()) as { questions?: Question[] };
-        if (!res.ok || !payload.questions || !active) return;
-        setQuestions(payload.questions);
-      } catch {
-        // keep SSR questions if refresh fails
-      }
-    }
-
-    void syncQuestions();
-    return () => {
-      active = false;
-    };
-  }, [code, hasSupabase]);
 
   useEffect(() => {
     setCurrentScore(current.score);
@@ -125,6 +105,31 @@ export default function RoomFeedClient({
 
             return [realtimeQuestion, ...prev];
           });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "questions",
+          filter: `room_id=eq.${room.id}`,
+        },
+        (payload) => {
+          const incoming = payload.new;
+
+          setQuestions((prev) =>
+            prev.map((item) =>
+              item.id === incoming.id
+                ? {
+                    ...item,
+                    content: incoming.content ?? item.content,
+                    avgRating: incoming.avg_rating ?? item.avgRating,
+                    answerCount: incoming.answer_count ?? item.answerCount,
+                  }
+                : item,
+            ),
+          );
         },
       )
       .subscribe();
@@ -221,12 +226,15 @@ export default function RoomFeedClient({
   async function handleRate(questionId: string, rating: number) {
     setStatus(null);
 
+    if (ratingQuestionId) return;
+
     if (!hasSupabase) {
       setStatus("Supabase 연결이 없어 별점을 저장할 수 없습니다.");
       return;
     }
 
     try {
+      setRatingQuestionId(questionId);
       const res = await fetch(`/api/questions/${questionId}/rate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -244,8 +252,13 @@ export default function RoomFeedClient({
             ? {
                 ...item,
                 avgRating: payload.avgRating ?? item.avgRating,
-                ratingTotal: payload.ratingTotal ?? item.ratingTotal ?? 0,
-                ratingCount: payload.ratingCount ?? item.ratingCount ?? 0,
+                ratingTotal:
+                  (item.ratingTotal ?? 0) -
+                  (typeof payload.previousRating === "number" ? payload.previousRating : 0) +
+                  (payload.appliedRating ?? rating),
+                ratingCount:
+                  (item.ratingCount ?? 0) +
+                  (typeof payload.previousRating === "number" ? 0 : 1),
               }
             : item,
         ),
@@ -253,6 +266,8 @@ export default function RoomFeedClient({
       setStatus(`별점 ${rating}점을 저장했습니다.`);
     } catch {
       setStatus("별점 저장에 실패했습니다.");
+    } finally {
+      setRatingQuestionId(null);
     }
   }
 
@@ -406,7 +421,8 @@ export default function RoomFeedClient({
                 question={question}
                 canRate={question.authorId !== current.id}
                 canDelete={current.role === "teacher" || question.authorId === current.id}
-                canOpenDetail={current.role === "teacher" || question.authorId === current.id}
+                canOpenDetail
+                isRating={ratingQuestionId === question.id}
                 onRate={handleRate}
                 onDelete={handleDelete}
               />
