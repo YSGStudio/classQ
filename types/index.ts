@@ -27,6 +27,8 @@ export type Question = {
   avgRating: number;
   ratingTotal?: number;
   ratingCount?: number;
+  hasRated?: boolean;
+  myRating?: number | null;
   answerCount: number;
 };
 

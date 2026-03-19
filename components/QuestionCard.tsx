@@ -5,6 +5,7 @@ type QuestionCardProps = {
   code: string;
   question: Question;
   canRate?: boolean;
+  isOwnQuestion?: boolean;
   canDelete?: boolean;
   canOpenDetail?: boolean;
   isRating?: boolean;
@@ -16,6 +17,7 @@ export default function QuestionCard({
   code,
   question,
   canRate = true,
+  isOwnQuestion = false,
   canDelete = false,
   canOpenDetail = false,
   isRating = false,
@@ -23,7 +25,7 @@ export default function QuestionCard({
   onDelete,
 }: QuestionCardProps) {
   const ratingTotal = question.ratingTotal ?? 0;
-  const isOwnQuestion = !canRate;
+  const alreadyRated = question.hasRated;
   const articleClassName = isOwnQuestion
     ? "rounded-2xl border border-[#2E6DB4]/35 bg-[#EAF2FF] p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
     : "rounded-2xl border border-[#2E6DB4]/15 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md";
@@ -92,7 +94,7 @@ export default function QuestionCard({
             <button
               key={value}
               type="button"
-              disabled={!canRate || isRating}
+              disabled={!canRate || isRating || alreadyRated}
               onClick={() => onRate?.(question.id, value)}
               className="rounded-md border border-[#F5A623]/30 bg-[#FFF8E8] px-2 py-1 text-xs font-bold text-[#9b6a10] hover:bg-[#F5A623] hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
               aria-label={`${value}점 부여`}
@@ -104,7 +106,11 @@ export default function QuestionCard({
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500">
-            {canRate ? "질문 완성도를 선택하세요" : "내 질문은 별점 불가"}
+            {alreadyRated
+              ? `평가 완료${question.myRating ? ` · ${question.myRating}점 부여함` : ""}`
+              : canRate
+                ? "질문 완성도를 선택하세요"
+                : "내 질문은 별점 불가"}
           </span>
           {canOpenDetail ? (
             <Link

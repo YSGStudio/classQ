@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { hasSupabaseEnv } from "@/lib/env";
+import { resolveActor } from "@/lib/actor";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { toRelativeKorean } from "@/lib/time";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ code: string }> },
 ) {
+  const actor = await resolveActor(request);
   const { code } = await context.params;
   const roomCode = code.trim().toUpperCase();
 
@@ -86,6 +88,22 @@ export async function GET(
     };
   });
 
-  return NextResponse.json({ questions });
-}
+  const { data: myRatingRows } =
+    actor && questionIds.length
+      ? await admin
+          .from("question_ratings")
+          .select("question_id, rating")
+          .eq("rater_id", actor.id)
+          .in("question_id", questionIds)
+      : { data: [] as { question_id: string; rating: number }[] };
 
+  const myRatingMap = new Map((myRatingRows ?? []).map((row) => [row.question_id, row.rating]));
+
+  return NextResponse.json({
+    questions: questions.map((question) => ({
+      ...question,
+      hasRated: myRatingMap.has(question.id),
+      myRating: myRatingMap.get(question.id) ?? null,
+    })),
+  });
+}

@@ -72,14 +72,18 @@ export async function POST(
     .eq("rater_id", actor.id)
     .maybeSingle();
 
-  const { error } = await admin.from("question_ratings").upsert(
-    {
-      question_id: id,
-      rater_id: actor.id,
-      rating,
-    },
-    { onConflict: "question_id,rater_id" },
-  );
+  if (existingRating) {
+    return NextResponse.json(
+      { error: "한 번 점수를 부여한 질문은 다시 평가할 수 없습니다." },
+      { status: 409 },
+    );
+  }
+
+  const { error } = await admin.from("question_ratings").insert({
+    question_id: id,
+    rater_id: actor.id,
+    rating,
+  });
 
   if (error) {
     return NextResponse.json({ error: "별점 저장 실패" }, { status: 500 });
@@ -93,7 +97,7 @@ export async function POST(
 
   return NextResponse.json({
     avgRating: refreshed?.avg_rating ?? rating,
-    previousRating: existingRating?.rating ?? null,
+    previousRating: null,
     appliedRating: rating,
   });
 }

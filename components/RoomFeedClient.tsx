@@ -228,6 +228,12 @@ export default function RoomFeedClient({
 
     if (ratingQuestionId) return;
 
+    const targetQuestion = questions.find((item) => item.id === questionId);
+    if (!targetQuestion || targetQuestion.hasRated) {
+      setStatus("한 번 점수를 부여한 질문은 다시 평가할 수 없습니다.");
+      return;
+    }
+
     if (!hasSupabase) {
       setStatus("Supabase 연결이 없어 별점을 저장할 수 없습니다.");
       return;
@@ -252,20 +258,18 @@ export default function RoomFeedClient({
             ? {
                 ...item,
                 avgRating: payload.avgRating ?? item.avgRating,
-                ratingTotal:
-                  (item.ratingTotal ?? 0) -
-                  (typeof payload.previousRating === "number" ? payload.previousRating : 0) +
-                  (payload.appliedRating ?? rating),
-                ratingCount:
-                  (item.ratingCount ?? 0) +
-                  (typeof payload.previousRating === "number" ? 0 : 1),
+                ratingTotal: (item.ratingTotal ?? 0) + (payload.appliedRating ?? rating),
+                ratingCount: (item.ratingCount ?? 0) + 1,
+                hasRated: true,
+                myRating: payload.appliedRating ?? rating,
               }
             : item,
         ),
       );
       setStatus(`별점 ${rating}점을 저장했습니다.`);
-    } catch {
-      setStatus("별점 저장에 실패했습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "별점 저장에 실패했습니다.";
+      setStatus(message);
     } finally {
       setRatingQuestionId(null);
     }
@@ -419,7 +423,8 @@ export default function RoomFeedClient({
                 key={question.id}
                 code={code}
                 question={question}
-                canRate={question.authorId !== current.id}
+                isOwnQuestion={question.authorId === current.id}
+                canRate={question.authorId !== current.id && !question.hasRated}
                 canDelete={current.role === "teacher" || question.authorId === current.id}
                 canOpenDetail
                 isRating={ratingQuestionId === question.id}

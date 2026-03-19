@@ -18,14 +18,15 @@ export default function StudentQuickLoginForm({ initialRoomCode }: StudentQuickL
   const [roomName, setRoomName] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentCandidate[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [loading, setLoading] = useState(false);
+  const [isFindingRoom, setIsFindingRoom] = useState(false);
+  const [isEntering, setIsEntering] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   const handleFindRoom = useCallback(async (codeInput?: string) => {
     const code = (codeInput ?? roomCode).trim().toUpperCase();
     if (!code) return;
 
-    setLoading(true);
+    setIsFindingRoom(true);
     setStatus(null);
 
     try {
@@ -50,7 +51,7 @@ export default function StudentQuickLoginForm({ initialRoomCode }: StudentQuickL
       setStudents([]);
       setRoomName(null);
     } finally {
-      setLoading(false);
+      setIsFindingRoom(false);
     }
   }, [roomCode]);
 
@@ -65,8 +66,8 @@ export default function StudentQuickLoginForm({ initialRoomCode }: StudentQuickL
     const code = roomCode.trim().toUpperCase();
     if (!code || !selectedId) return;
 
-    setLoading(true);
-    setStatus(null);
+    setIsEntering(true);
+    setStatus("입장중입니다.");
 
     try {
       const res = await fetch("/api/student/session", {
@@ -87,7 +88,7 @@ export default function StudentQuickLoginForm({ initialRoomCode }: StudentQuickL
     } catch {
       setStatus("입장 중 오류가 발생했습니다.");
     } finally {
-      setLoading(false);
+      setIsEntering(false);
     }
   }
 
@@ -105,10 +106,10 @@ export default function StudentQuickLoginForm({ initialRoomCode }: StudentQuickL
           <button
             type="button"
             onClick={() => void handleFindRoom()}
-            disabled={loading || roomCode.trim().length < 6}
+            disabled={isFindingRoom || isEntering || roomCode.trim().length < 6}
             className="mt-3 w-full rounded-lg bg-[#2E6DB4] px-3 py-2 text-sm font-bold text-white hover:bg-[#245990] disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {loading ? "조회 중..." : "학생 목록 불러오기"}
+            {isFindingRoom ? "조회 중..." : "학생 목록 불러오기"}
           </button>
           {roomName ? <p className="mt-2 text-xs text-slate-600">방: {roomName}</p> : null}
         </div>
@@ -148,10 +149,10 @@ export default function StudentQuickLoginForm({ initialRoomCode }: StudentQuickL
       <button
         type="button"
         onClick={() => void handleEnterRoom()}
-        disabled={loading || !selectedId}
+        disabled={isEntering || isFindingRoom || !selectedId}
         className="mt-6 block w-full rounded-lg bg-[#F5A623] px-4 py-3 text-center text-sm font-bold text-white hover:bg-[#d7911f] disabled:cursor-not-allowed disabled:bg-slate-300"
       >
-        {loading ? "처리 중..." : "입장하기"}
+        {isEntering ? "입장 중..." : "입장하기"}
       </button>
 
       {status ? <p className="mt-3 text-sm font-semibold text-[#2E6DB4]">{status}</p> : null}

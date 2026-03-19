@@ -190,6 +190,22 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
     .slice(0, 3);
 
   const current = await getCurrentDisplayProfile();
+  const { data: myRatingRows } =
+    questionIds.length && current.id
+      ? await admin
+          .from("question_ratings")
+          .select("question_id, rating")
+          .eq("rater_id", current.id)
+          .in("question_id", questionIds)
+      : { data: [] as { question_id: string; rating: number }[] };
+
+  const myRatingMap = new Map((myRatingRows ?? []).map((row) => [row.question_id, row.rating]));
+
+  const questionsWithRatingState = questionsWithTotals.map((item) => ({
+    ...item,
+    hasRated: myRatingMap.has(item.id),
+    myRating: myRatingMap.get(item.id) ?? null,
+  }));
 
   return {
     room: {
@@ -200,8 +216,8 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
       teacherName: "담당 교사",
     },
     current,
-    questions: questionsWithTotals,
-    unanswered: questionsWithTotals.filter((item) => item.answerCount === 0),
+    questions: questionsWithRatingState,
+    unanswered: questionsWithRatingState.filter((item) => item.answerCount === 0),
     scoreTop3: scoreTop3.length ? scoreTop3 : [...studentStats].sort((a, b) => b.score - a.score).slice(0, 3),
     ratedTop3,
     answeredTop3,
