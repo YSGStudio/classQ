@@ -1,7 +1,7 @@
 import Link from "next/link";
 import QuestionDetailClient from "@/components/QuestionDetailClient";
 import { getCurrentProfile } from "@/lib/auth";
-import { getQuestionDetail } from "@/lib/classq-data";
+import { getQuestionAnswers, getQuestionBaseDetail } from "@/lib/classq-data";
 import { hasSupabaseEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase-admin";
 
@@ -13,8 +13,8 @@ export default async function QuestionDetailPage({
   params: Promise<{ code: string; id: string }>;
 }) {
   const { code, id } = await params;
-  const { question, answers } = await getQuestionDetail(code, id);
   const current = await getCurrentProfile();
+  const { question } = await getQuestionBaseDetail(code, id);
 
   let canAccessQuestion = Boolean(question && current);
   if (question && current && hasSupabaseEnv() && process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -54,13 +54,17 @@ export default async function QuestionDetailPage({
     );
   }
 
+  const canViewAnswers = question.authorId === current.id;
+  const answers = canViewAnswers ? await getQuestionAnswers(id) : [];
+
   return (
     <QuestionDetailClient
       code={code}
       question={question}
       initialAnswers={answers}
+      canViewAnswers={canViewAnswers}
       canWriteAnswer={question.authorId !== current.id}
-      canScoreAnswers={current.role === "teacher" || question.authorId === current.id}
+      canScoreAnswers={canViewAnswers}
     />
   );
 }

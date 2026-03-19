@@ -49,19 +49,7 @@ export async function POST(
     return NextResponse.json({ error: "질문을 찾을 수 없습니다." }, { status: 404 });
   }
 
-  let canGrade = false;
-
-  if (actor.role === "teacher") {
-    const { data: room } = await admin
-      .from("rooms")
-      .select("teacher_id")
-      .eq("id", question.room_id)
-      .single();
-
-    canGrade = room?.teacher_id === actor.id;
-  } else {
-    canGrade = question.author_id === actor.id;
-  }
+  const canGrade = question.author_id === actor.id;
 
   if (!canGrade) {
     return NextResponse.json({ error: "채점 권한이 없습니다." }, { status: 403 });

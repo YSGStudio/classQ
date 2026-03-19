@@ -10,6 +10,7 @@ type QuestionDetailClientProps = {
   code: string;
   question: Question;
   initialAnswers: Answer[];
+  canViewAnswers: boolean;
   canWriteAnswer: boolean;
   canScoreAnswers: boolean;
 };
@@ -18,6 +19,7 @@ export default function QuestionDetailClient({
   code,
   question,
   initialAnswers,
+  canViewAnswers,
   canWriteAnswer,
   canScoreAnswers,
 }: QuestionDetailClientProps) {
@@ -38,7 +40,7 @@ export default function QuestionDetailClient({
   const answerIdSet = useMemo(() => new Set(answers.map((answer) => answer.id)), [answers]);
 
   useEffect(() => {
-    if (!hasSupabase) return;
+    if (!hasSupabase || !canViewAnswers) return;
 
     const supabase = createClient();
     const answerChannel = supabase
@@ -111,7 +113,7 @@ export default function QuestionDetailClient({
       supabase.removeChannel(answerChannel);
       supabase.removeChannel(scoreChannel);
     };
-  }, [hasSupabase, question.id]);
+  }, [canViewAnswers, hasSupabase, question.id]);
 
   async function handleSubmitAnswer() {
     const content = draft.trim();
@@ -212,7 +214,7 @@ export default function QuestionDetailClient({
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-[#2E6DB4]"
             />
             <div className="mt-3 flex items-center justify-between gap-2">
-              <p className="text-xs text-slate-500">참여 학생 모두 질문과 답변을 확인할 수 있습니다.</p>
+              <p className="text-xs text-slate-500">답변 목록은 질문 작성자만 확인할 수 있습니다.</p>
               <button
                 type="button"
                 onClick={handleSubmitAnswer}
@@ -231,13 +233,19 @@ export default function QuestionDetailClient({
         ) : null}
 
         <section className="mt-6">
-          <h2 className="mb-3 text-lg font-black text-[#113459]">답변 목록 ({answers.length})</h2>
-          <AnswerList
-            answers={answers}
-            canScore={canScoreAnswers}
-            scoringAnswerId={scoringAnswerId}
-            onScore={handleScore}
-          />
+          <h2 className="mb-3 text-lg font-black text-[#113459]">답변 목록</h2>
+          {canViewAnswers ? (
+            <AnswerList
+              answers={answers}
+              canScore={canScoreAnswers}
+              scoringAnswerId={scoringAnswerId}
+              onScore={handleScore}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
+              답변 목록은 이 질문을 작성한 학생만 볼 수 있습니다.
+            </div>
+          )}
         </section>
       </section>
     </main>

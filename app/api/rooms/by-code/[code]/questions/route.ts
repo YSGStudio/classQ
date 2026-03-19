@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { hasSupabaseEnv } from "@/lib/env";
 import { resolveActor } from "@/lib/actor";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { toRelativeKorean } from "@/lib/time";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ code: string }> },
 ) {
   const actor = await resolveActor(request);

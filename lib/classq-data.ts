@@ -67,6 +67,57 @@ async function getCurrentDisplayProfile() {
   };
 }
 
+export async function getQuestionBaseDetail(
+  code: string,
+  questionId: string,
+): Promise<{ question: Question | null; admin: ReturnType<typeof createAdminClient> | null }> {
+  if (!hasSupabaseEnv() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const question =
+      questions.find((item) => item.roomCode === code && item.id === questionId) ?? null;
+    return { question, admin: null };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: roomData } = await admin
+    .from("rooms")
+    .select("id, code")
+    .eq("code", code)
+    .single();
+
+  if (!roomData) return { question: null, admin };
+
+  const { data: questionRow } = await admin
+    .from("questions")
+    .select("id, room_id, author_id, content, answer_count, avg_rating, created_at")
+    .eq("id", questionId)
+    .eq("room_id", roomData.id)
+    .single();
+
+  if (!questionRow) return { question: null, admin };
+
+  const { data: authorRow } = await admin
+    .from("profiles")
+    .select("id, name")
+    .eq("id", questionRow.author_id)
+    .single();
+
+  return {
+    question: {
+      id: questionRow.id,
+      roomCode: roomData.code,
+      roomId: questionRow.room_id,
+      authorId: questionRow.author_id,
+      author: authorRow?.name ?? "익명",
+      content: questionRow.content,
+      answerCount: questionRow.answer_count ?? 0,
+      avgRating: questionRow.avg_rating ?? 0,
+      createdAt: toRelativeKorean(questionRow.created_at),
+    },
+    admin,
+  };
+}
+
 export async function getRoomFeedData(code: string): Promise<FeedData> {
   const roomCode = code.trim().toUpperCase();
   if (!hasSupabaseEnv() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return fromMock(code);
@@ -114,15 +165,24 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
     };
   }
 
-  const authorIds = [
-    ...new Set(questionRows.map((row) => row.author_id).filter(Boolean)),
-  ] as string[];
-  const { data: authorRows } = await admin
-    .from("profiles")
-    .select("id, name")
-    .in("id", authorIds);
+  const authorIds = [...new Set(questionRows.map((row) => row.author_id).filter(Boolean))] as string[];
+  const questionIds = questionRows.map((row) => row.id);
+  const currentPromise = getCurrentDisplayProfile();
+  const [authorRowsResult, ratingRowsResult, membersResult, current] = await Promise.all([
+    authorIds.length
+      ? admin.from("profiles").select("id, name").in("id", authorIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    questionIds.length
+      ? admin
+          .from("question_ratings")
+          .select("question_id, rating")
+          .in("question_id", questionIds)
+      : Promise.resolve({ data: [] as { question_id: string; rating: number }[] }),
+    admin.from("room_members").select("student_id").eq("room_id", roomData.id),
+    currentPromise,
+  ]);
 
-  const authorMap = new Map((authorRows ?? []).map((author) => [author.id, author.name]));
+  const authorMap = new Map((authorRowsResult.data ?? []).map((author) => [author.id, author.name]));
 
   const mappedQuestions: Question[] = questionRows.map((row) => ({
     id: row.id,
@@ -136,13 +196,7 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
     createdAt: toRelativeKorean(row.created_at),
   }));
 
-  const questionIds = mappedQuestions.map((item) => item.id);
-  const { data: ratingRows } = questionIds.length
-    ? await admin
-        .from("question_ratings")
-        .select("question_id, rating")
-        .in("question_id", questionIds)
-    : { data: [] as { question_id: string; rating: number }[] };
+  const ratingRows = ratingRowsResult.data;
 
   const ratingSummary = new Map<string, { total: number; count: number }>();
   for (const row of ratingRows ?? []) {
@@ -166,12 +220,8 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
   const answeredTop3 = [...questionsWithTotals]
     .sort((a, b) => b.answerCount - a.answerCount)
     .slice(0, 3);
-  const { data: members } = await admin
-    .from("room_members")
-    .select("student_id")
-    .eq("room_id", roomData.id);
 
-  const memberIds = [...new Set((members ?? []).map((member) => member.student_id))];
+  const memberIds = [...new Set((membersResult.data ?? []).map((member) => member.student_id))];
   const { data: scoreRows } = memberIds.length
     ? await admin
         .from("student_scores")
@@ -189,7 +239,6 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 
-  const current = await getCurrentDisplayProfile();
   const { data: myRatingRows } =
     questionIds.length && current.id
       ? await admin
@@ -227,6 +276,7 @@ export async function getRoomFeedData(code: string): Promise<FeedData> {
 export async function getQuestionDetail(
   code: string,
   questionId: string,
+  includeAnswers = true,
 ): Promise<{ question: Question | null; answers: Answer[] }> {
   if (!hasSupabaseEnv() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const question =
@@ -234,42 +284,10 @@ export async function getQuestionDetail(
     return { question, answers: answersByQuestion[questionId] ?? [] };
   }
 
-  const admin = createAdminClient();
+  const { question, admin } = await getQuestionBaseDetail(code, questionId);
 
-  const { data: roomData } = await admin
-    .from("rooms")
-    .select("id, code")
-    .eq("code", code)
-    .single();
-
-  if (!roomData) return { question: null, answers: [] };
-
-  const { data: questionRow } = await admin
-    .from("questions")
-    .select("id, room_id, author_id, content, answer_count, avg_rating, created_at")
-    .eq("id", questionId)
-    .eq("room_id", roomData.id)
-    .single();
-
-  if (!questionRow) return { question: null, answers: [] };
-
-  const { data: authorRow } = await admin
-    .from("profiles")
-    .select("id, name")
-    .eq("id", questionRow.author_id)
-    .single();
-
-  const question: Question = {
-    id: questionRow.id,
-    roomCode: roomData.code,
-    roomId: questionRow.room_id,
-    authorId: questionRow.author_id,
-    author: authorRow?.name ?? "익명",
-    content: questionRow.content,
-    answerCount: questionRow.answer_count ?? 0,
-    avgRating: questionRow.avg_rating ?? 0,
-    createdAt: toRelativeKorean(questionRow.created_at),
-  };
+  if (!question || !admin) return { question, answers: [] };
+  if (!includeAnswers) return { question, answers: [] };
 
   const { data: answerRows } = await admin
     .from("answers")
@@ -308,4 +326,47 @@ export async function getQuestionDetail(
   }));
 
   return { question, answers };
+}
+
+export async function getQuestionAnswers(questionId: string): Promise<Answer[]> {
+  if (!hasSupabaseEnv() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return answersByQuestion[questionId] ?? [];
+  }
+
+  const admin = createAdminClient();
+  const { data: answerRows } = await admin
+    .from("answers")
+    .select("id, question_id, author_id, content, created_at")
+    .eq("question_id", questionId)
+    .order("created_at", { ascending: false });
+
+  if (!answerRows?.length) return [];
+
+  const answerAuthorIds = [
+    ...new Set(answerRows.map((row) => row.author_id).filter(Boolean)),
+  ] as string[];
+  const { data: answerAuthors } = await admin
+    .from("profiles")
+    .select("id, name")
+    .in("id", answerAuthorIds);
+
+  const answerAuthorMap = new Map(
+    (answerAuthors ?? []).map((author) => [author.id, author.name]),
+  );
+
+  const { data: scoreRows } = await admin
+    .from("answer_scores")
+    .select("answer_id, score")
+    .in("answer_id", answerRows.map((row) => row.id));
+
+  const scoreMap = new Map((scoreRows ?? []).map((row) => [row.answer_id, row.score]));
+
+  return answerRows.map((row) => ({
+    id: row.id,
+    questionId: row.question_id,
+    author: answerAuthorMap.get(row.author_id) ?? "익명",
+    content: row.content,
+    score: scoreMap.get(row.id),
+    createdAt: toRelativeKorean(row.created_at),
+  }));
 }

@@ -78,9 +78,18 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData> {
     ...new Set((questionRows ?? []).map((row) => row.author_id).filter(Boolean)),
   ] as string[];
 
-  const { data: questionAuthors } = questionAuthorIds.length
-    ? await supabase.from("profiles").select("id, name").in("id", questionAuthorIds)
-    : { data: [] as { id: string; name: string }[] };
+  const studentProfilesPromise = supabase
+    .from("profiles")
+    .select("id, name")
+    .eq("role", "student")
+    .eq("teacher_id", profile.id);
+  const questionAuthorsPromise = questionAuthorIds.length
+    ? supabase.from("profiles").select("id, name").in("id", questionAuthorIds)
+    : Promise.resolve({ data: [] as { id: string; name: string }[] });
+  const [{ data: questionAuthors }, { data: profiles }] = await Promise.all([
+    questionAuthorsPromise,
+    studentProfilesPromise,
+  ]);
 
   const authorMap = new Map((questionAuthors ?? []).map((row) => [row.id, row.name]));
   const roomCodeMap = new Map(mappedRooms.map((room) => [room.id, room.code]));
@@ -101,27 +110,22 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData> {
     .sort((a, b) => b.answerCount - a.answerCount)
     .slice(0, 3);
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, name")
-    .eq("role", "student")
-    .eq("teacher_id", profile.id);
-
   const studentIds = (profiles ?? []).map((p) => p.id);
 
-  const { data: scores } = studentIds.length
-    ? await supabase
-        .from("student_scores")
-        .select("student_id, total_score")
-        .in("student_id", studentIds)
-    : { data: [] as { student_id: string; total_score: number }[] };
-
-  const { data: answers } = studentIds.length
-    ? await supabase
-        .from("answers")
-        .select("author_id")
-        .in("author_id", studentIds)
-    : { data: [] as { author_id: string }[] };
+  const [scoresResult, answersResult] = await Promise.all([
+    studentIds.length
+      ? supabase
+          .from("student_scores")
+          .select("student_id, total_score")
+          .in("student_id", studentIds)
+      : Promise.resolve({ data: [] as { student_id: string; total_score: number }[] }),
+    studentIds.length
+      ? supabase
+          .from("answers")
+          .select("author_id")
+          .in("author_id", studentIds)
+      : Promise.resolve({ data: [] as { author_id: string }[] }),
+  ]);
 
   const questionCountMap = new Map<string, number>();
   for (const row of questionRows ?? []) {
@@ -130,11 +134,11 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData> {
   }
 
   const answerCountMap = new Map<string, number>();
-  for (const row of answers ?? []) {
+  for (const row of answersResult.data ?? []) {
     answerCountMap.set(row.author_id, (answerCountMap.get(row.author_id) ?? 0) + 1);
   }
 
-  const scoreMap = new Map((scores ?? []).map((row) => [row.student_id, row.total_score]));
+  const scoreMap = new Map((scoresResult.data ?? []).map((row) => [row.student_id, row.total_score]));
 
   const stats: StudentStats[] = (profiles ?? []).map((p) => ({
     name: p.name,
